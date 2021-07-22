@@ -1,0 +1,9 @@
+note over selain:
+save-nappia painetaan
+selain suorittaa tapahtumankäsittelijän
+joka estää lomakkeen lähetyksen oletusarvoisen toiminnan
+koodi lisää muistiinpanon, piirtää ruudun sisällön 
+uudelleen ja lähettää uuden muistiinpanon palvelimelle
+end note
+selain->palvelin: HTTP POST https://studies.cs.helsinki.fi/exampleapp/new_note_spa
+palvelin->selain: 201 created, {"message":"note created"}
