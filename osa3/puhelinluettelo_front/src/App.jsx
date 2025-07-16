@@ -49,7 +49,7 @@ const App = () => {
     setTimeout(() => {
       setError(null)
       setSuccess(null)
-    }, 3000)
+    }, 5000)
   }
 
   const handleSubmit = (event) => {
@@ -65,7 +65,7 @@ const App = () => {
             clearMessages()
             setPersons(persons.map(person => person.id !== data.id ? person : data))
           }).catch(error => {
-            setError(`Information of ${newName} has already been removed from server`)
+            setError(`Person validation failed: ${error.response.data.error}`)
             clearMessages()
           })
         setNewName('')
@@ -78,7 +78,7 @@ const App = () => {
         clearMessages()
         setPersons(persons.concat(data))
       }).catch(error => {
-        setError(`Error adding person: ${error}`)
+        setError(`Person validation failed: ${error.response.data.error}`)
         clearMessages()
       })
       setNewName('')

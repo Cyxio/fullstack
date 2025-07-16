@@ -1,5 +1,7 @@
+require('dotenv').config()
 const express = require('express');
-var morgan = require('morgan')
+var morgan = require('morgan');
+const Person = require('./models/person');
 
 const app = express();
 
@@ -23,52 +25,99 @@ const persons = [
     { id: 4, name: 'Mary Poppendieck', number: '39-23-6423122' }
 ];
 
-app.get('/api/persons', (req, res) => {
-    res.json(persons);
+app.get('/api/persons', (req, res, next) => {
+    Person.find({}).then(persons => {
+        res.json(persons);
+    }).catch(error => next(error));
 });
 
-app.get('/api/persons/:id', (req, res) => {
-    const id = parseInt(req.params.id, 10);
-    const person = persons.find(p => p.id === id);
-    if (person) {
-        res.json(person);
-    } else {
-        res.status(404).send('Person not found');
-    }
+app.get('/api/persons/:id', (req, res, next) => {
+    Person.findById(req.params.id)
+        .then(person => {
+            if (person) {
+                res.json(person);
+            } else {
+                res.status(404).end();
+            }
+        })
+        .catch(error => next(error));
 });
 
-app.get('/api/info', (req, res) => {
-    const info = `Phonebook has info for ${persons.length} people`;
-    const date = new Date();
-    res.send(`${info}<br><br>${date}`);
+app.put('/api/persons/:id', (req, res, next) => {
+    const { name, number } = req.body;
+
+    Person.findById(req.params.id)
+        .then(person => {
+            if (!person) {
+                return res.status(404).end();
+            }
+
+            person.name = name;
+            person.number = number;
+
+            return person.save().then((updatedPerson) => {
+              res.json(updatedPerson);
+            });
+        })
+        .catch(error => next(error))
 });
 
-app.delete('/api/persons/:id', (req, res) => {
-    const id = parseInt(req.params.id, 10);
-    const index = persons.findIndex(p => p.id === id);
-    if (index !== -1) {
-        persons.splice(index, 1);
-        res.status(204).end();
-    } else {
-        res.status(404).send('Person not found');
-    }
+app.get('/api/info', (req, res, next) => {
+    Person.find({}).then(persons => {
+        if (!persons) {
+            return res.status(404).end();
+        }
+        const info = `Phonebook has info for ${persons.length} people`;
+        const date = new Date();
+        res.send(`${info}<br><br>${date}`);
+    }).catch(error => next(error));
 });
 
-app.post('/api/persons', (req, res) => {
+app.delete('/api/persons/:id', (req, res, next) => {
+    Person.findByIdAndDelete(req.params.id)
+        .then(() => {
+            res.status(204).end();
+        })
+        .catch(error => next(error));
+});
+
+app.post('/api/persons', (req, res, next) => {
     const {name, number} = req.body;
     if (!name || !number) {
         return res.status(400).send({'error': 'name and number are required'});
     }
-    if (persons.some(p => p.name === name)) {
-        return res.status(400).send({'error': 'name must be unique'});
-    }
-    const id = Math.floor(Math.random() * 999999);
-    const newPerson = { id, name, number };
-    persons.push(newPerson);
-    res.status(201).json(newPerson);
+    const person = new Person({
+        name: name,
+        number: number,
+    });
+    person.save()
+        .then(savedPerson => {
+            res.status(201).json(savedPerson);
+        })
+        .catch(error => next(error));
 });
 
-const PORT = process.env.PORT || 3001
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: 'unknown endpoint' })
+}
+
+app.use(unknownEndpoint)
+
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message)
+
+  if (error.name === 'CastError') {
+    return response.status(400).send({ error: 'malformatted id' })
+  } else if (error.name === 'ValidationError') {
+    return response.status(400).json({ error: error.message })
+  }
+
+  next(error)
+}
+
+app.use(errorHandler)
+
+const PORT = process.env.PORT
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 })
